@@ -705,27 +705,19 @@ class VRMDocument extends GLTFDocument:
 		if blend_mode == int(RenderMode.Cutout):
 			new_mat.set_shader_param("_AlphaCutoutEnable", 1.0)
 
-		if godot_shader_outline != null:
-			var outline_mat = new_mat.duplicate()
-			outline_mat.shader = godot_shader_outline
+class VRMDocument extends GLTFDocument:
+	@export var root_node: Node
+	
 
-			new_mat.next_pass = outline_mat
 
-		return new_mat
-	func _vrm_get_texture_info(gltf_images: Array, vrm_mat_props: Dictionary, unity_tex_name: String) -> Dictionary:
-		var texture_info: Dictionary = {}
-		texture_info["tex"] = null
-		texture_info["offset"] = Vector3(0.0, 0.0, 0.0)
-		texture_info["scale"] = Vector3(1.0, 1.0, 1.0)
-		if vrm_mat_props["textureProperties"].has(unity_tex_name):
-			var mainTexId: int = vrm_mat_props["textureProperties"][unity_tex_name]
-			var mainTexImage: Texture2D = gltf_images[mainTexId]
-			texture_info["tex"] = mainTexImage
-		if vrm_mat_props["vectorProperties"].has(unity_tex_name):
-			var offsetScale: Array = vrm_mat_props["vectorProperties"][unity_tex_name]
-			texture_info["offset"] = Vector3(offsetScale[0], offsetScale[1], 0.0)
-			texture_info["scale"] = Vector3(offsetScale[2], offsetScale[3], 1.0)
-		return texture_info
+func _import_post(gstate : GLTFState, node : Node) -> int:
+
+	var vrm : VRMDocument = VRMDocument.new()
+
+	vrm.root_node = vrm.generate_scene(gstate, 30)
+	
+	var gltf_json : Dictionary = gstate.json
+	var vrm_extension : Dictionary = gltf_json["extensions"]["VRM"]
 
 	func _vrm_get_float(vrm_mat_props: Dictionary, key: String, def: float) -> float:
 		return vrm_mat_props["floatProperties"].get(key, def)
@@ -736,37 +728,31 @@ class VRMDocument extends GLTFDocument:
 		var gltf_json : Dictionary = gstate.json
 		var vrm_extension : Dictionary = gltf_json["extensions"]["VRM"]
 
-		var human_bone_to_idx: Dictionary = {}
-		# Ignoring in ["humanoid"]: armStretch, legStretch, upperArmTwist
-		# lowerArmTwist, upperLegTwist, lowerLegTwist, feetSpacing,
-		# and hasTranslationDoF
-		for human_bone in vrm_extension["humanoid"]["humanBones"]:
-			human_bone_to_idx[human_bone["bone"]] = int(human_bone["node"])
-			# Unity Mecanim properties:
-			# Ignoring: useDefaultValues
-			# Ignoring: min
-			# Ignoring: max
-			# Ignoring: center
-			# Ingoring: axisLength
+	var animplayer = AnimationPlayer.new()
+	animplayer.name = "anim"
+	vrm.root_node.add_child(animplayer, true)
+	animplayer.owner = vrm.root_node
+	_create_animation_player(animplayer, vrm_extension, gstate, human_bone_to_idx)
 
-		_update_materials(vrm_extension, gstate)
+	var vrm_top_level:GDScript = load("res://addons/vrm/vrm_toplevel.gd")
+	vrm.root_node.set_script(vrm_top_level)
 
-		var animplayer = AnimationPlayer.new()
-		animplayer.name = "anim"
-		root_node.add_child(animplayer, true)
-		animplayer.owner = root_node
-		_create_animation_player(animplayer, vrm_extension, gstate, human_bone_to_idx)
+	var vrm_meta: Resource = _create_meta(vrm.root_node, animplayer, vrm_extension, gstate, human_bone_to_idx)
+	vrm.root_node.set("vrm_meta", vrm_meta)
+	vrm.root_node.set("vrm_secondary", NodePath())
 
 		var vrm_top_level:GDScript = load("res://addons/vrm/vrm_toplevel.gd")
 		root_node.set_script(vrm_top_level)
 
-		var vrm_meta: Resource = _create_meta(root_node, animplayer, vrm_extension, gstate, human_bone_to_idx)
-		root_node.set("vrm_meta", vrm_meta)
-		root_node.set("vrm_secondary", NodePath())
+		var secondary_node: Node = vrm.root_node.get_node("secondary")
+		if secondary_node == null:
+			secondary_node = Node3D.new()
+			vrm.root_node.add_child(secondary_node, true)
+			secondary_node.set_owner(vrm.root_node)
+			secondary_node.set_name("secondary")
 
-		if (vrm_extension.has("secondaryAnimation") and \
-				(vrm_extension["secondaryAnimation"].get("colliderGroups", []).size() > 0 or \
-				vrm_extension["secondaryAnimation"].get("boneGroups", []).size() > 0)):
+		var secondary_path: NodePath = vrm.root_node.get_path_to(secondary_node)
+		vrm.root_node.set("vrm_secondary", secondary_path)
 
 			var secondary_node: Node = root_node.get_node("secondary")
 			if secondary_node == null:
