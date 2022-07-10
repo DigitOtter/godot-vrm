@@ -733,11 +733,17 @@ func _import_preflight(gstate : GLTFState) -> int:
 	return OK
 
 
+class VRMDocument extends GLTFDocument:
+	@export var root_node: Node
+	
+
+
 func _import_post(gstate : GLTFState, node : Node) -> int:
 
-	var gltf : GLTFDocument = GLTFDocument.new()
-	var root_node: Node = gltf.generate_scene(gstate, 30)
+	var vrm : VRMDocument = VRMDocument.new()
 
+	vrm.root_node = vrm.generate_scene(gstate, 30)
+	
 	var gltf_json : Dictionary = gstate.json
 	var vrm_extension : Dictionary = gltf_json["extensions"]["VRM"]
 
@@ -758,30 +764,30 @@ func _import_post(gstate : GLTFState, node : Node) -> int:
 
 	var animplayer = AnimationPlayer.new()
 	animplayer.name = "anim"
-	root_node.add_child(animplayer, true)
-	animplayer.owner = root_node
+	vrm.root_node.add_child(animplayer, true)
+	animplayer.owner = vrm.root_node
 	_create_animation_player(animplayer, vrm_extension, gstate, human_bone_to_idx)
 
 	var vrm_top_level:GDScript = load("res://addons/vrm/vrm_toplevel.gd")
-	root_node.set_script(vrm_top_level)
+	vrm.root_node.set_script(vrm_top_level)
 
-	var vrm_meta: Resource = _create_meta(root_node, animplayer, vrm_extension, gstate, human_bone_to_idx)
-	root_node.set("vrm_meta", vrm_meta)
-	root_node.set("vrm_secondary", NodePath())
+	var vrm_meta: Resource = _create_meta(vrm.root_node, animplayer, vrm_extension, gstate, human_bone_to_idx)
+	vrm.root_node.set("vrm_meta", vrm_meta)
+	vrm.root_node.set("vrm_secondary", NodePath())
 
 	if (vrm_extension.has("secondaryAnimation") and \
 			(vrm_extension["secondaryAnimation"].get("colliderGroups", []).size() > 0 or \
 			vrm_extension["secondaryAnimation"].get("boneGroups", []).size() > 0)):
 
-		var secondary_node: Node = root_node.get_node("secondary")
+		var secondary_node: Node = vrm.root_node.get_node("secondary")
 		if secondary_node == null:
 			secondary_node = Node3D.new()
-			root_node.add_child(secondary_node, true)
-			secondary_node.set_owner(root_node)
+			vrm.root_node.add_child(secondary_node, true)
+			secondary_node.set_owner(vrm.root_node)
 			secondary_node.set_name("secondary")
 
-		var secondary_path: NodePath = root_node.get_path_to(secondary_node)
-		root_node.set("vrm_secondary", secondary_path)
+		var secondary_path: NodePath = vrm.root_node.get_path_to(secondary_node)
+		vrm.root_node.set("vrm_secondary", secondary_path)
 
 		_parse_secondary_node(secondary_node, vrm_extension, gstate)
 	return OK
