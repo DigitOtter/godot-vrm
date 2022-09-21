@@ -957,7 +957,7 @@ func _add_vrm_nodes_to_skin(obj: Dictionary) -> bool:
 	return true
 
 
-func _import_preflight(gstate : GLTFState) -> int:
+func _import_preflight(gstate : GLTFState, exts : PackedStringArray) -> int:
 	var gltf_json_parsed: Dictionary = gstate.json
 	if not _add_vrm_nodes_to_skin(gltf_json_parsed):
 		push_error("Failed to find required VRM keys in json")
