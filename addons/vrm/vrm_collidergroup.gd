@@ -33,7 +33,9 @@ func setup():
 	if parent != null:
 		colliders.clear()
 		for collider in sphere_colliders:
-			colliders.append(SphereCollider.new(bone_idx, collider.normal, collider.d))
+			colliders.append(SphereCollider.new(bone_idx, 
+												collider.normal, 
+												collider.d+0.01))
 
 
 func _ready(ready_parent: Node3D, ready_skel: Object):
