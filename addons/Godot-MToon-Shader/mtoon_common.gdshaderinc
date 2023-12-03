@@ -36,6 +36,7 @@ const float isOutline = 0.0;
 
 const bool CALCULATE_LIGHTING_IN_FRAGMENT = true;
 
+#include "res://digit/materials/shaders/project_image.gdshaderinc"
 
 uniform float _AlphaCutoutEnable : hint_range(0,1,1) = 0.0;
 uniform float _Cutoff : hint_range(0,1) = 0.5;
@@ -90,7 +91,7 @@ varying vec3 tspace1; // : TEXCOORD2;
 varying vec3 tspace2; // : TEXCOORD3;
 
 void vertex() {
-	UV=UV*_MainTex_ST.xy+_MainTex_ST.zw;
+	//UV=UV*_MainTex_ST.xy+_MainTex_ST.zw;
 	COLOR=COLOR;
 
 	if (isOutline == 1.0) {
@@ -239,7 +240,7 @@ void fragment() {
 
 	shade *= _ShadeColor;
 	lit *= _Color;
-	
+
 	//shade = min(shade, lit); ///// Mimic look of non-PBR min() clamp we commented out below.
 
 	// normal
@@ -318,8 +319,8 @@ void fragment() {
 	//}
 	fragment_albedo_output = max(fragment_albedo_output.rgb, vec3(0.0001));
 
-	ALBEDO = albedo;
-	EMISSION = emission;
+	ALBEDO   = project(albedo, SCREEN_UV);
+	EMISSION = project(emission, SCREEN_UV);
 
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;
